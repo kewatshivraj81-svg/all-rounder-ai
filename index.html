@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>All-Rounder AI Studio</title>
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#1e293b" />
+  <style>
+    * { box-sizing: border-box; font-family: system-ui, -apple-system, sans-serif; }
+    body {
+      margin: 0; background: #0b1120; color: #f8fafc;
+      display: flex; flex-direction: column; height: 100vh;
+    }
+    header {
+      padding: 12px 14px; background: #1e293b; border-bottom: 1px solid #334155;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .brand { font-weight: 800; font-size: 16px; display: flex; align-items: center; gap: 6px; }
+    .h-btns { display: flex; gap: 8px; }
+    .btn {
+      background: #334155; color: #f8fafc; border: none; padding: 7px 10px;
+      border-radius: 8px; font-size: 12.5px; cursor: pointer; font-weight: 600;
+    }
+    .btn:hover { background: #475569; }
+    #keyPanel {
+      display: none; padding: 12px 14px; background: #131c31;
+      border-bottom: 1px solid #334155; flex-direction: column; gap: 10px;
+    }
+    .key-row { display: flex; gap: 8px; }
+    .key-row input {
+      flex: 1; padding: 9px 10px; border-radius: 8px; border: 1px solid #475569;
+      background: #0f172a; color: #fff; font-size: 13px;
+    }
+    .key-list { display: flex; flex-wrap: wrap; gap: 6px; }
+    .key-chip {
+      background: #1e293b; border: 1px solid #475569; color: #cbd5e1;
+      padding: 5px 10px; border-radius: 999px; font-size: 12px; cursor: pointer;
+    }
+    .key-chip.active { background: #16a34a; border-color: #22c55e; color: #fff; font-weight: 700; }
+    .modes {
+      display: flex; gap: 8px; padding: 10px 12px; background: #111827;
+      overflow-x: auto; border-bottom: 1px solid #1e293b;
+    }
+    .modes::-webkit-scrollbar { display: none; }
+    .mode {
+      background: #1e293b; color: #cbd5e1; border: 1px solid #334155;
+      padding: 6px 12px; border-radius: 999px; font-size: 12.5px;
+      white-space: nowrap; cursor: pointer;
+    }
+    .mode.active { background: #2563eb; color: #fff; border-color: #3b82f6; font-weight: 700; }
+    #chat {
+      flex: 1; padding: 14px; overflow-y: auto;
+      display: flex; flex-direction: column; gap: 12px;
+    }
+    .msg-wrap { display: flex; flex-direction: column; max-width: 86%; gap: 4px; }
+    .msg-wrap.user { align-self: flex-end; align-items: flex-end; }
+    .msg-wrap.ai { align-self: flex-start; align-items: flex-start; }
+    .msg {
+      padding: 11px 14px; border-radius: 15px;
+      line-height: 1.5; white-space: pre-wrap; font-size: 14.5px; word-break: break-word;
+    }
+    .user .msg { background: #2563eb; color: #fff; border-bottom-right-radius: 4px; }
+    .ai .msg {
+      background: #1e293b; color: #f1f5f9; border: 1px solid #334155;
+      border-bottom-left-radius: 4px;
+    }
+    .copy-btn {
+      background: transparent; color: #94a3b8; border: none;
+      font-size: 11.5px; cursor: pointer; padding: 2px 6px;
+    }
+    .copy-btn:hover { color: #f8fafc; }
+    .bar {
+      display: flex; gap: 8px; padding: 10px 12px;
+      background: #1e293b; border-top: 1px solid #334155;
+    }
+    #msgInput {
+      flex: 1; padding: 11px 12px; border-radius: 10px; border: 1px solid #475569;
+      background: #0f172a; color: #fff; font-size: 15px; outline: none;
+    }
+    #sendBtn {
+      padding: 11px 16px; border-radius: 10px; border: none;
+      background: #2563eb; color: #fff; font-weight: 700; cursor: pointer;
+    }
+    #sendBtn:disabled { opacity: 0.5; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand">⚡ All-Rounder AI</div>
+    <div class="h-btns">
+      <button class="btn" onclick="toggleKeys()">🔑 Keys</button>
+      <button class="btn" onclick="clearChat()">🗑️ Clear</button>
+    </div>
+  </header>
+
+  <div id="keyPanel">
+    <div class="key-row">
+      <input type="password" id="keyInput" placeholder="Gemini API Key daal kar Add dabao..." />
+      <button class="btn" style="background:#22c55e; color:#000;" onclick="addKey()">+ Add</button>
+    </div>
+    <div id="keyList" class="key-list"></div>
+  </div>
+
+  <div class="modes">
+    <button class="mode active" data-p="">💬 All-Rounder</button>
+    <button class="mode" data-p="Explain this very simply in easy Hinglish with examples: ">🧠 Simple</button>
+    <button class="mode" data-p="Give 5 practical, creative ideas for: ">💡 Ideas</button>
+    <button class="mode" data-p="Create short, clear study notes with bullet points and key takeaways for: ">📚 Study</button>
+    <button class="mode" data-p="Write clean code and explain step by step simply: ">💻 Code</button>
+  </div>
+
+  <div id="chat"></div>
+
+  <div class="bar">
+    <input type="text" id="msgInput" placeholder="Kuch bhi pucho..." />
+    <button id="sendBtn">Send</button>
+  </div>
+
+  <script>
+    const chat = document.getElementById("chat");
+    const msgInput = document.getElementById("msgInput");
+    const sendBtn = document.getElementById("sendBtn");
+    const keyPanel = document.getElementById("keyPanel");
+    const keyInput = document.getElementById("keyInput");
+    const keyList = document.getElementById("keyList");
+
+    const PREFERRED_MODELS = ["gemini-3.8-flash", "gemini-3.5-flash"];
+    let discoveredModels = [];
+    let prefix = "";
+    let savedKeys = JSON.parse(localStorage.getItem("gemini_keys_list") || "[]");
+    let activeKey = (localStorage.getItem("gemini_api_key") || "").trim();
+
+    if (activeKey && !savedKeys.includes(activeKey)) {
+      savedKeys.unshift(activeKey);
+      localStorage.setItem("gemini_keys_list", JSON.stringify(savedKeys));
+    }
+    if (!activeKey && savedKeys.length > 0) {
+      activeKey = savedKeys[0];
+      localStorage.setItem("gemini_api_key", activeKey);
+    }
+
+    let history = [];
+
+    function toggleKeys() {
+      keyPanel.style.display = keyPanel.style.display === "flex" ? "none" : "flex";
+      renderKeys();
+    }
+
+    function renderKeys() {
+      keyList.innerHTML = "";
+      if (savedKeys.length === 0) {
+        keyList.innerHTML = '<span style="font-size:12px; color:#94a3b8;">Koi key saved nahi hai. Upar key paste karke + Add dabao.</span>';
+        return;
+      }
+      savedKeys.forEach((k, idx) => {
+        const chip = document.createElement("button");
+        chip.className = "key-chip" + (k === activeKey ? " active" : "");
+        const masked = k.slice(0, 6) + "..." + k.slice(-4);
+        chip.textContent = (k === activeKey ? "✓ " : "") + `Key ${idx + 1} (${masked})`;
+        chip.onclick = () => {
+          activeKey = k;
+          discoveredModels = [];
+          localStorage.setItem("gemini_api_key", activeKey);
+          renderKeys();
+          addMsg(`Key ${idx + 1} active ho gayi!`, "ai");
+        };
+        keyList.appendChild(chip);
+      });
+    }
+
+    function addKey() {
+      const k = keyInput.value.trim();
+      if (!k) return;
+      if (!savedKeys.includes(k)) {
+        savedKeys.push(k);
+        localStorage.setItem("gemini_keys_list", JSON.stringify(savedKeys));
+      }
+      activeKey = k;
+      discoveredModels = [];
+      localStorage.setItem("gemini_api_key", activeKey);
+      keyInput.value = "";
+      renderKeys();
+      addMsg("Nayi API Key add aur active ho gayi! Ab sawal bhejo.", "ai");
+    }
+
+    if (!activeKey) {
+      keyPanel.style.display = "flex";
+      renderKeys();
+    }
+
+    document.querySelectorAll(".mode").forEach(b => {
+      b.onclick = () => {
+        document.querySelectorAll(".mode").forEach(x => x.classList.remove("active"));
+        b.classList.add("active");
+        prefix = b.dataset.p;
+      };
+    });
+
+    function addMsg(text, who) {
+      const wrap = document.createElement("div");
+      wrap.className = "msg-wrap " + who;
+
+      const d = document.createElement("div");
+      d.className = "msg";
+      d.textContent = text;
+      wrap.appendChild(d);
+
+      if (who === "ai") {
+        const cp = document.createElement("button");
+        cp.className = "copy-btn";
+        cp.textContent = "📋 Copy";
+        cp.onclick = () => {
+          navigator.clipboard?.writeText(d.textContent);
+          cp.textContent = "✓ Copied";
+          setTimeout(() => cp.textContent = "📋 Copy", 1200);
+        };
+        wrap.appendChild(cp);
+      }
+
+      chat.appendChild(wrap);
+      chat.scrollTop = chat.scrollHeight;
+      return d;
+    }
+
+    function clearChat() {
+      history = [];
+      chat.innerHTML = "";
+      addMsg("Hey bhai! Tumhara All-Rounder AI ready hai. Mode chuno aur kuch bhi pucho.", "ai");
+    }
+
+    const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+    async function getAvailableModels() {
+      if (discoveredModels.length > 0) return discoveredModels;
+      try {
+        const res = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(activeKey)}`
+        );
+        const data = await res.json();
+        if (Array.isArray(data?.models)) {
+          const supported = data.models
+            .filter(m => Array.isArray(m.supportedGenerationMethods) && m.supportedGenerationMethods.includes("generateContent"))
+            .map(m => m.name.replace(/^models\//, ""));
+
+          const ordered = [
+            ...PREFERRED_MODELS.filter(pm => supported.includes(pm)),
+            ...supported.filter(s => !PREFERRED_MODELS.includes(s) && s.includes("gemini"))
+          ];
+
+          if (ordered.length > 0) {
+            discoveredModels = ordered;
+            return discoveredModels;
+          }
+        }
+      } catch (_) {}
+      return PREFERRED_MODELS;
+    }
+
+    async function askAI(contents, bubble) {
+      const modelsToTry = await getAvailableModels();
+      let quotaExceeded = false;
+      let lastErr = "Reply nahi aaya.";
+
+      for (const m of modelsToTry) {
+        for (let attempt = 1; attempt <= 2; attempt++) {
+          bubble.textContent = attempt === 1
+            ? `Soch raha hoon (${m})...`
+            : `Server busy hai, retry (${m})...`;
+
+          const res = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${encodeURIComponent(activeKey)}`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                systemInstruction: {
+                  parts: [{ text: "You are a smart, friendly, practical All-Rounder AI assistant. Reply clearly and concisely in natural Hinglish or English matching the user." }]
+                },
+                contents
+              })
+            }
+          );
+
+          const data = await res.json().catch(() => ({}));
+          const reply = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (reply) return { ok: true, text: reply };
+
+          const errMsg = data?.error?.message || `HTTP ${res.status}`;
+          lastErr = errMsg;
+          const lower = errMsg.toLowerCase();
+
+          if (lower.includes("quota") || lower.includes("exceeded")) {
+            quotaExceeded = true;
+            break;
+          }
+          if (lower.includes("not found") || lower.includes("not supported")) {
+            break;
+          }
+          if (lower.includes("high demand") || lower.includes("unavailable") || lower.includes("overloaded")) {
+            if (attempt < 2) {
+              await sleep(1500);
+              continue;
+            }
+            break;
+          }
+          return { ok: false, text: "Error: " + errMsg };
+        }
+      }
+
+      if (quotaExceeded) {
+        return {
+          ok: false,
+          text: "Is API key ka aaj ka Free quota khatam ho gaya hai (limit: 20/day). Upar 🔑 Keys mein ek nayi API key add karke switch karo!"
+        };
+      }
+      return { ok: false, text: "Error: " + lastErr };
+    }
+
+    async function sendMsg() {
+      const raw = msgInput.value.trim();
+      if (!raw) return;
+
+      if (!activeKey) {
+        keyPanel.style.display = "flex";
+        renderKeys();
+        addMsg("Pehle 🔑 Keys mein apni API key daal kar + Add dabao.", "ai");
+        return;
+      }
+
+      addMsg(raw, "user");
+      msgInput.value = "";
+      sendBtn.disabled = true;
+
+      history.push({ role: "user", parts: [{ text: prefix + raw }] });
+      const bubble = addMsg("Soch raha hoon...", "ai");
+
+      try {
+        const out = await askAI(history.slice(-10), bubble);
+        bubble.textContent = out.text;
+        if (out.ok) history.push({ role: "model", parts: [{ text: out.text }] });
+        else history.pop();
+      } catch (e) {
+        history.pop();
+        bubble.textContent = "Error: " + (e?.message || "Connection issue");
+      } finally {
+        sendBtn.disabled = false;
+      }
+    }
+
+    sendBtn.onclick = sendMsg;
+    msgInput.onkeypress = (e) => { if (e.key === "Enter") sendMsg(); };
+    clearChat();
+  </script>
+
+</body>
+</html>
